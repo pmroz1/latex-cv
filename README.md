@@ -63,7 +63,6 @@ To add a photo, use the `graphicx` package (already included) and add this code 
 
 ## License
 
-This template is free to use for personal and commercial purposes.
+This template is available under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-
-photo source : https://www.pexels.com/pl-pl/zdjecie/mezczyzna-na-portret-szarej-koszuli-91227/
+Photo source: https://www.pexels.com/pl-pl/zdjecie/mezczyzna-na-portret-szarej-koszuli-91227/
