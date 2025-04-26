@@ -1,51 +1,51 @@
-# LaTeX CV Template
+# Szablon CV w LaTeX
 
-A clean, professional, and customizable CV/resume template created with LaTeX.
+Czysty, profesjonalny i konfigurowalny szablon CV stworzony w LaTeX.
 
-![CV Preview](images/cv-preview.jpg)
+![Podgląd CV](images/cv-preview.jpg)
 
-## Language Versions
+## Wersje językowe
 
-- **English**: Main branch (current)
-- **Polish**: Available in the `cv-pl` branch
+- **Angielski**: Główna gałąź (main)
+- **Polski**: Dostępna w gałęzi `cv-pl` (aktualna)
 
-## Prerequisites
+## Wymagania wstępne
 
-- A LaTeX distribution (e.g., TeX Live, MiKTeX)
-- A LaTeX editor (e.g., TeXstudio, Overleaf)
+- Dystrybucja LaTeX (np. TeX Live, MiKTeX)
+- Edytor LaTeX (np. TeXstudio, Overleaf)
 
-## Getting Started
+## Pierwsze kroki
 
-1. Open `cv.tex` in your LaTeX editor
-2. Replace the placeholder information with your personal details
-3. Compile the document to generate a PDF
+1. Otwórz plik `cv.tex` w edytorze LaTeX
+2. Zastąp dane przykładowe swoimi danymi osobowymi
+3. Skompiluj dokument, aby wygenerować plik PDF
 
-## Customization
+## Dostosowanie
 
-### Color Scheme
+### Schemat kolorów
 
-You can change the primary color by modifying the RGB values in:
+Możesz zmienić kolor główny, modyfikując wartości RGB w:
 
 ```tex
-\definecolor{primary}{RGB}{70, 130, 180} % Steel Blue
+\definecolor{primary}{RGB}{70, 130, 180} % Stalowy niebieski
 ```
 
-### Sections
+### Sekcje
 
-Add, remove, or rearrange sections as needed. Each section follows this pattern:
+Dodawaj, usuwaj lub zmieniaj kolejność sekcji według potrzeb. Każda sekcja ma następujący wzór:
 
 ```tex
-\section{Section Name}
-\cvEntry{Title}{Location}{Subtitle}{Date Range}
+\section{Nazwa Sekcji}
+\cvEntry{Tytuł}{Lokalizacja}{Podtytuł}{Zakres Dat}
 \begin{itemize}[leftmargin=*]
-  \cvSubItem{Description point 1}
-  \cvSubItem{Description point 2}
+  \cvSubItem{Opis punktu 1}
+  \cvSubItem{Opis punktu 2}
 \end{itemize}
 ```
 
-### Photo
+### Zdjęcie
 
-The template includes a photo placement in the header section, next to your name and contact information. To customize:
+Szablon zawiera miejsce na zdjęcie w sekcji nagłówka, obok imienia i danych kontaktowych. Aby dostosować:
 
 ```tex
 \begin{minipage}[c]{0.22\textwidth}
@@ -54,18 +54,18 @@ The template includes a photo placement in the header section, next to your name
 \end{minipage}
 ```
 
-Simply replace `images/photo.jpg` with the path to your own photo. The photo should ideally be professional and have a 3:3.5 aspect ratio.
+Po prostu zastąp `images/photo.jpg` ścieżką do swojego zdjęcia. Zdjęcie powinno być profesjonalne i mieć proporcje 3:3,5.
 
-## Tips for Creating a Great CV
+## Wskazówki do tworzenia świetnego CV
 
-1. **Keep it concise**: Aim for 1-2 pages maximum
-2. **Quantify achievements**: Use numbers to showcase your impact
-3. **Use action verbs**: Begin bullet points with strong action verbs
-4. **Customize for each application**: Highlight relevant skills/experiences
-5. **Proofread carefully**: Check for typos and formatting issues
+1. **Zachowaj zwięzłość**: Dąż do maksymalnie 1-2 stron
+2. **Przedstawiaj osiągnięcia liczbowo**: Używaj liczb, aby pokazać swój wpływ
+3. **Stosuj czasowniki dynamiczne**: Rozpoczynaj punkty od mocnych czasowników
+4. **Dostosuj do każdej aplikacji**: Podkreślaj umiejętności/doświadczenia istotne dla danej oferty
+5. **Sprawdzaj dokładnie**: Kontroluj błędy literowe i formatowanie
 
-## License
+## Licencja
 
-This template is available under the MIT License. See the [LICENSE](LICENSE) file for details.
+Ten szablon jest dostępny na licencji MIT. Zobacz plik [LICENSE](LICENSE) dla szczegółów.
 
-Photo source: https://www.pexels.com/pl-pl/zdjecie/mezczyzna-na-portret-szarej-koszuli-91227/
+Źródło zdjęcia: https://www.pexels.com/pl-pl/zdjecie/mezczyzna-na-portret-szarej-koszuli-91227/
