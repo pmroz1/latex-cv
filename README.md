@@ -2,7 +2,7 @@
 
 A clean, professional, and customizable CV/resume template created with LaTeX.
 
-![CV Preview](cv-preview.png)
+![CV Preview](images/cv-preview.jpg)
 
 ## Language Versions
 
