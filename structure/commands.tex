@@ -1,0 +1,35 @@
+% Custom commands - more compact
+\newcommand{\cvItem}[2]{
+  \item[\faAngleRight] \textbf{#1}: #2
+}
+\newcommand{\cvSubItem}[1]{
+  \item[\faCaretRight] #1
+}
+\newcommand{\cvEntry}[4]{
+  \noindent
+  \begin{tabular*}{\textwidth}{@{}l@{\extracolsep{\fill}}r@{}}
+    \textbf{#1} & #2 \\
+    \textit{#3} & \textit{#4} \\
+  \end{tabular*}\vspace{-10pt}
+}
+
+% Header command - more compact
+\newcommand{\header}[3]{
+  \begin{center}
+    {\LARGE\textbf{#1}}\\
+    \vspace{2pt}
+    {\normalsize\textcolor{gray}{#2}}\\
+    \vspace{2pt}
+    {\normalsize\textcolor{gray}{#3}}
+  \end{center}
+}
+
+% Contact info command - more compact
+\newcommand{\contactInfo}[4]{
+  \begin{center}
+    {\small\faEnvelope\ \href{mailto:#1}{#1} $|$ 
+    \faPhone\ #2 $|$ 
+    \faMapMarker*\ #3 $|$ 
+    \faLinkedin\ \href{#4}{LinkedIn}}
+  \end{center}
+}

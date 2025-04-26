@@ -1,0 +1,35 @@
+% Required packages
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\usepackage{fontawesome5}
+\usepackage{multicol}
+\usepackage{graphicx}
+\usepackage{geometry}
+ 
+% Adjust margins for one-page layout
+\geometry{
+    left=0.6in,
+    right=0.6in,
+    top=0.5in,
+    bottom=0.5in,
+    footskip=.3cm
+}
+
+% Setup custom colors
+\definecolor{primary}{RGB}{70, 130, 180} % Steel Blue
+\definecolor{gray}{RGB}{120, 120, 120}
+\definecolor{lightgray}{RGB}{230, 230, 230}
+
+% Set section formatting - reduced spacing
+\titleformat{\section}
+  {\large\scshape\raggedright\color{primary}}
+  {}{0em}{}[\titlerule]
+\titlespacing*{\section}{0pt}{8pt}{4pt}
