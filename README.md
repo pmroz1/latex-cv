@@ -43,15 +43,18 @@ Add, remove, or rearrange sections as needed. Each section follows this pattern:
 \end{itemize}
 ```
 
-### Photo (Optional)
+### Photo
 
-To add a photo, use the `graphicx` package (already included) and add this code after the header:
+The template includes a photo placement in the header section, next to your name and contact information. To customize:
 
 ```tex
-\begin{center}
-  \includegraphics[width=2.5cm]{photo.jpg}
-\end{center}
+\begin{minipage}[c]{0.22\textwidth}
+    \raggedleft
+    \includegraphics[width=3cm,height=3.5cm,clip]{images/photo.jpg}
+\end{minipage}
 ```
+
+Simply replace `images/photo.jpg` with the path to your own photo. The photo should ideally be professional and have a 3:3.5 aspect ratio.
 
 ## Tips for Creating a Great CV
 
