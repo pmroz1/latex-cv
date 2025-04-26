@@ -1,0 +1,8 @@
+% Photo styling commands and settings
+
+% Define a command for framed photo with subtle border
+\newcommand{\profilephoto}[1]{%
+  \fboxsep=0pt % No spacing between frame and content
+  \fboxrule=0.5pt % Thin frame line
+  \fcolorbox{primary}{white}{\includegraphics[width=3cm,height=3.5cm,clip]{#1}}%
+}
