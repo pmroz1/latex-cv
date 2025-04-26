@@ -2,6 +2,13 @@
 
 A clean, professional, and customizable CV/resume template created with LaTeX.
 
+![CV Preview](cv-preview.png)
+
+## Language Versions
+
+- **English**: Main branch (current)
+- **Polish**: Available in the `cv-pl` branch
+
 ## Prerequisites
 
 - A LaTeX distribution (e.g., TeX Live, MiKTeX)
