@@ -20,6 +20,25 @@ pub struct Skill {
     pub value: String,
 }
 
+/// User-defined section (certifications, awards, languages, publications...).
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[serde(default)]
+pub struct Section {
+    pub title: String,
+    pub visible: bool,
+    pub entries: Vec<Entry>,
+}
+
+impl Default for Section {
+    fn default() -> Self {
+        Section {
+            title: "New Section".into(),
+            visible: true,
+            entries: vec![],
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 #[serde(default)]
 pub struct Cv {
@@ -38,6 +57,7 @@ pub struct Cv {
     pub skills: Vec<Skill>,
     pub projects: Vec<Entry>,
     pub additional: String,
+    pub sections: Vec<Section>,
 }
 
 impl Default for Cv {
@@ -103,6 +123,7 @@ impl Default for Cv {
                 &["What the project does and your contribution."],
             )],
             additional: String::new(),
+            sections: vec![],
         }
     }
 }
@@ -182,6 +203,16 @@ mod tests {
         cv.save(&dir).unwrap();
         assert!(Cv::load(&dir).unwrap() == cv);
         let _ = fs::remove_file(dir);
+    }
+    #[test]
+    fn custom_sections_roundtrip() {
+        let mut cv = Cv::default();
+        cv.sections.push(Section {
+            title: "Awards".into(),
+            ..Section::default()
+        });
+        let s = serde_json::to_string(&cv).unwrap();
+        assert!(serde_json::from_str::<Cv>(&s).unwrap() == cv);
     }
     #[test]
     fn validation() {

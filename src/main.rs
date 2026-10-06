@@ -7,7 +7,7 @@ mod latex;
 mod model;
 
 use eframe::egui;
-use model::{Cv, Entry, Skill};
+use model::{Cv, Entry, Section, Skill};
 use std::{fs, path::PathBuf, process::Command};
 
 struct App {
@@ -101,6 +101,23 @@ impl App {
             }
             Pending::Open => self.open(),
             Pending::Close => self.allow_close = true,
+        }
+    }
+    fn import_json_resume(&mut self) {
+        if let Some(p) = rfd::FileDialog::new()
+            .add_filter("JSON Resume", &["json"])
+            .pick_file()
+        {
+            match fs::read_to_string(&p)
+                .map_err(|e| e.to_string())
+                .and_then(|t| export::from_json_resume(&t))
+            {
+                Ok(cv) => {
+                    self.cv = cv;
+                    self.status = format!("Imported {}", p.display());
+                }
+                Err(e) => self.status = format!("Import failed: {e}"),
+            }
         }
     }
     fn export_text(&mut self, name: &str, ext: &str, f: fn(&Cv) -> String) {
@@ -382,6 +399,9 @@ impl eframe::App for App {
                 if ui.button("Save as…").clicked() {
                     self.save(true);
                 }
+                if ui.button("Import JSON Resume…").clicked() {
+                    self.import_json_resume();
+                }
                 ui.separator();
                 if ui.button("Export .tex").clicked() {
                     self.export_tex();
@@ -396,6 +416,10 @@ impl eframe::App for App {
                     }
                     if ui.button("HTML").clicked() {
                         self.export_text("HTML", "html", export::html);
+                        ui.close_menu();
+                    }
+                    if ui.button("JSON Resume").clicked() {
+                        self.export_text("JSON Resume", "json", export::json_resume);
                         ui.close_menu();
                     }
                     if ui.button("Plain text (ATS)").clicked() {
@@ -540,6 +564,46 @@ impl eframe::App for App {
                         &mut cv.projects,
                         ["Project", "Location", "Role/Tech", "Date"],
                     )
+                });
+                let mut sec_action = None;
+                for (i, sec) in cv.sections.iter_mut().enumerate() {
+                    ui.push_id(("sec", i), |ui| {
+                        ui.horizontal(|ui| {
+                            ui.checkbox(&mut sec.visible, "")
+                                .on_hover_text("Show in CV");
+                            ui.add(egui::TextEdit::singleline(&mut sec.title).desired_width(180.0));
+                            if let Some(op) = move_buttons(ui) {
+                                sec_action = Some((i, op));
+                            }
+                        });
+                        ui.collapsing(format!("Entries: {}", sec.title), |ui| {
+                            entries_ui(
+                                ui,
+                                "cs",
+                                &mut sec.entries,
+                                ["Title", "Location", "Subtitle", "Date"],
+                            )
+                        });
+                    });
+                }
+                if let Some((i, op)) = sec_action {
+                    apply(&mut cv.sections, i, op);
+                }
+                ui.horizontal(|ui| {
+                    if ui.button("+ Add section").clicked() {
+                        cv.sections.push(Section::default());
+                    }
+                    ui.menu_button("+ Preset", |ui| {
+                        for t in ["Certifications", "Awards", "Languages", "Publications"] {
+                            if ui.button(t).clicked() {
+                                cv.sections.push(Section {
+                                    title: t.into(),
+                                    ..Section::default()
+                                });
+                                ui.close_menu();
+                            }
+                        }
+                    });
                 });
                 ui.collapsing("Additional", |ui| {
                     ui.add(

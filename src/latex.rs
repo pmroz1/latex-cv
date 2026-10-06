@@ -157,6 +157,9 @@ fn body(cv: &Cv) -> String {
     s += &section("Education", &cv.education);
     s += &skills(cv);
     s += &section("Projects", &cv.projects);
+    for sec in cv.sections.iter().filter(|x| x.visible) {
+        s += &section(&esc(&sec.title), &sec.entries);
+    }
     if !cv.additional.trim().is_empty() {
         s += &format!(
             "\\section{{Additional Information}}\n{}\n",
@@ -257,6 +260,28 @@ mod tests {
             ..Cv::default()
         };
         assert!(generate(&cv).contains(r"A \& B"));
+    }
+    #[test]
+    fn custom_sections_rendered() {
+        use crate::model::Section;
+        let mut cv = Cv::default();
+        let e = Entry {
+            title: "Cert".into(),
+            ..Entry::default()
+        };
+        cv.sections.push(Section {
+            title: "Awards & Certs".into(),
+            visible: true,
+            entries: vec![e.clone()],
+        });
+        cv.sections.push(Section {
+            title: "Hidden".into(),
+            visible: false,
+            entries: vec![e],
+        });
+        let t = generate(&cv);
+        assert!(t.contains(r"\section{Awards \& Certs}"));
+        assert!(!t.contains("Hidden"));
     }
     #[test]
     fn all_templates_generate() {
