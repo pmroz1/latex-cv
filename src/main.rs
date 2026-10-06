@@ -2,13 +2,19 @@
     all(not(debug_assertions), target_os = "windows"),
     windows_subsystem = "windows"
 )]
+mod build;
 mod export;
 mod latex;
 mod model;
 
 use eframe::egui;
 use model::{Cv, Entry, Section, Skill};
-use std::{fs, path::PathBuf, process::Command};
+use std::{
+    fs,
+    hash::{Hash, Hasher},
+    path::PathBuf,
+    time::{Duration, Instant},
+};
 
 struct App {
     cv: Cv,
@@ -23,6 +29,17 @@ struct App {
     allow_close: bool,
     last_autosave: std::time::Instant,
     recover: bool,
+    worker: Option<build::Worker>,
+    live_preview: bool,
+    job_id: u64,
+    compiling: bool,
+    edited_at: Option<Instant>,
+    last_hash: u64,
+    errors: Vec<String>,
+    pdf: Option<Vec<u8>>,
+    preview_tex: Option<egui::TextureHandle>,
+    multi_page: bool,
+    built_cv: Cv,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -52,6 +69,17 @@ impl App {
             allow_close: false,
             last_autosave: std::time::Instant::now(),
             recover: autosave_path().exists(),
+            worker: None,
+            live_preview: true,
+            job_id: 0,
+            compiling: false,
+            edited_at: Some(Instant::now()),
+            last_hash: 0,
+            errors: vec![],
+            pdf: None,
+            preview_tex: None,
+            multi_page: false,
+            built_cv: Cv::default(),
         }
     }
     fn undo(&mut self) {
@@ -181,11 +209,98 @@ impl App {
             .set_file_name("cv.tex")
             .save_file()
         {
-            self.status = match fs::write(&p, latex::generate(&self.cv)) {
+            let mut photo_name = None;
+            if let (Some(src), Some(dir)) = (self.photo_path(), p.parent()) {
+                let name = latex::photo_file_name(&self.cv.photo.path);
+                if fs::copy(&src, dir.join(&name)).is_ok() {
+                    photo_name = Some(name);
+                }
+            }
+            self.status = match fs::write(&p, latex::generate_with(&self.cv, photo_name.as_deref()))
+            {
                 Ok(_) => format!("Exported {}", p.display()),
                 Err(e) => format!("Export failed: {e}"),
             };
         }
+    }
+    fn photo_path(&self) -> Option<PathBuf> {
+        let p = &self.cv.photo.path;
+        (!p.is_empty() && PathBuf::from(p).is_file()).then(|| PathBuf::from(p))
+    }
+    fn source_hash(&self) -> u64 {
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        latex::generate_with(&self.cv, Some(&latex::photo_file_name(&self.cv.photo.path)))
+            .hash(&mut h);
+        if let Some(p) = self.photo_path() {
+            if let Ok(m) = fs::metadata(&p) {
+                m.len().hash(&mut h);
+                m.modified().ok().hash(&mut h);
+            }
+        }
+        h.finish()
+    }
+    /// Debounced background rebuild: called every frame.
+    fn live_update(&mut self, ctx: &egui::Context) {
+        if self.worker.is_none() {
+            self.worker = Some(build::spawn(ctx.clone()));
+        }
+        if let Some(w) = &self.worker {
+            while let Ok(out) = w.rx.try_recv() {
+                if out.id != self.job_id {
+                    continue;
+                }
+                self.compiling = false;
+                match out.result {
+                    Ok(b) => {
+                        self.errors.clear();
+                        self.multi_page = b.multi_page;
+                        self.preview_tex = b
+                            .preview
+                            .map(|img| ctx.load_texture("preview", img, Default::default()));
+                        self.pdf = Some(b.pdf);
+                    }
+                    Err(e) => self.errors = e,
+                }
+            }
+        }
+        if !self.live_preview {
+            return;
+        }
+        if self.cv != self.built_cv {
+            self.edited_at = Some(Instant::now());
+            self.built_cv = self.cv.clone();
+        }
+        if let Some(t) = self.edited_at {
+            let wait = Duration::from_millis(700);
+            if t.elapsed() < wait {
+                ctx.request_repaint_after(wait - t.elapsed());
+                return;
+            }
+            self.edited_at = None;
+            let h = self.source_hash();
+            if h == self.last_hash {
+                return; // cached: identical source already built
+            }
+            self.last_hash = h;
+            self.job_id += 1;
+            self.compiling = true;
+            let job = build::Job {
+                id: self.job_id,
+                tex: latex::generate_with(
+                    &self.cv,
+                    Some(&latex::photo_file_name(&self.cv.photo.path)),
+                ),
+                photo: self.photo_path(),
+            };
+            if let Some(w) = &self.worker {
+                let _ = w.tx.send(job);
+            }
+        }
+    }
+    fn cancel_build(&mut self) {
+        self.job_id += 1;
+        self.compiling = false;
+        self.last_hash = 0;
     }
     fn export_pdf(&mut self) {
         let Some(p) = rfd::FileDialog::new()
@@ -195,37 +310,32 @@ impl App {
         else {
             return;
         };
-        let dir = std::env::temp_dir().join(format!("latex-cv-{}", std::process::id()));
-        let _ = fs::create_dir_all(&dir);
-        if let Err(e) = fs::write(dir.join("cv.tex"), latex::generate(&self.cv)) {
-            self.status = format!("Write failed: {e}");
-            return;
-        }
-        let engines: [(&str, &[&str]); 2] = [
-            ("tectonic", &["cv.tex"]),
-            (
-                "pdflatex",
-                &["-interaction=nonstopmode", "-halt-on-error", "cv.tex"],
-            ),
-        ];
-        let mut msg =
-            "No LaTeX engine found. Install tectonic, TeX Live or MiKTeX, or use Export .tex."
-                .to_string();
-        for (exe, args) in engines {
-            if let Ok(out) = Command::new(exe).args(args).current_dir(&dir).output() {
-                msg = if out.status.success() {
-                    match fs::copy(dir.join("cv.pdf"), &p) {
-                        Ok(_) => format!("PDF written to {}", p.display()),
-                        Err(e) => format!("Copy failed: {e}"),
-                    }
-                } else {
-                    format!("{exe} failed; export .tex and check the log")
-                };
-                break;
+        let fresh = self.pdf.is_some()
+            && self.errors.is_empty()
+            && !self.compiling
+            && self.edited_at.is_none()
+            && self.last_hash == self.source_hash();
+        let pdf = match (&self.pdf, fresh) {
+            (Some(pdf), true) => Ok(pdf.clone()),
+            _ => {
+                let photo = self.photo_path();
+                let tex = latex::generate_with(
+                    &self.cv,
+                    Some(&latex::photo_file_name(&self.cv.photo.path)),
+                );
+                build::compile(&tex, photo.as_deref())
             }
-        }
-        let _ = fs::remove_dir_all(&dir);
-        self.status = msg;
+        };
+        self.status = match pdf {
+            Ok(bytes) => match fs::write(&p, bytes) {
+                Ok(_) => format!("PDF written to {}", p.display()),
+                Err(e) => format!("Write failed: {e}"),
+            },
+            Err(errs) => {
+                self.errors = errs.clone();
+                format!("PDF export failed: {}", errs.join("; "))
+            }
+        };
     }
 }
 
@@ -487,18 +597,53 @@ impl eframe::App for App {
             });
         }
         egui::SidePanel::right("preview")
-            .default_width(420.0)
+            .default_width(460.0)
             .show(ctx, |ui| {
-                ui.heading("LaTeX output");
-                ui.checkbox(&mut self.show_source, "Show source");
+                ui.horizontal(|ui| {
+                    ui.heading("Preview");
+                    ui.checkbox(&mut self.live_preview, "Live");
+                    if self.compiling {
+                        ui.spinner();
+                        if ui.small_button("Cancel").clicked() {
+                            self.cancel_build();
+                        }
+                    } else if self.edited_at.is_some() {
+                        ui.weak("…waiting");
+                    }
+                    if !self.live_preview && ui.button("Build now").clicked() {
+                        self.last_hash = 0;
+                        self.edited_at = Some(Instant::now() - Duration::from_secs(1));
+                        self.live_preview = true;
+                    }
+                    ui.checkbox(&mut self.show_source, "LaTeX source");
+                });
+                if !self.errors.is_empty() {
+                    egui::Frame::group(ui.style()).show(ui, |ui| {
+                        ui.colored_label(egui::Color32::from_rgb(200, 40, 40), "Build errors");
+                        for e in &self.errors {
+                            ui.colored_label(egui::Color32::from_rgb(200, 40, 40), format!("• {e}"));
+                        }
+                    });
+                }
+                if self.multi_page {
+                    ui.colored_label(egui::Color32::from_rgb(200, 120, 0), "⚠ The CV runs past one page");
+                }
                 egui::ScrollArea::both().show(ui, |ui| {
-                    let mut src = latex::generate(&self.cv);
-                    ui.add(
-                        egui::TextEdit::multiline(&mut src)
-                            .code_editor()
-                            .desired_width(f32::INFINITY)
-                            .interactive(self.show_source),
-                    );
+                    if self.show_source {
+                        let mut src = latex::generate(&self.cv);
+                        ui.add(
+                            egui::TextEdit::multiline(&mut src)
+                                .code_editor()
+                                .desired_width(f32::INFINITY)
+                                .interactive(false),
+                        );
+                    } else if let Some(t) = &self.preview_tex {
+                        let w = ui.available_width();
+                        let size = t.size_vec2();
+                        ui.image((t.id(), size * (w / size.x)));
+                    } else if self.errors.is_empty() {
+                        ui.label("Preview needs a LaTeX engine (tectonic, pdflatex or xelatex) and pdftoppm (poppler-utils).");
+                    }
                 });
             });
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -519,6 +664,107 @@ impl eframe::App for App {
                             ui.end_row();
                         }
                     });
+                });
+                ui.collapsing("Design", |ui| {
+                    let d = &mut cv.design;
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label("Accent:");
+                        for (name, rgb) in latex::ACCENT_PRESETS {
+                            let c = egui::Color32::from_rgb(rgb[0], rgb[1], rgb[2]);
+                            if ui
+                                .add(egui::Button::new(" ").fill(c))
+                                .on_hover_text(name)
+                                .clicked()
+                            {
+                                cv.accent = rgb;
+                            }
+                        }
+                    });
+                    egui::ComboBox::from_label("Font")
+                        .selected_text(latex::FONTS[d.font.min(latex::FONTS.len() - 1)])
+                        .show_ui(ui, |ui| {
+                            for (i, f) in latex::FONTS.iter().enumerate() {
+                                ui.selectable_value(&mut d.font, i, *f);
+                            }
+                        });
+                    egui::ComboBox::from_label("Font size")
+                        .selected_text(if d.font_size == 0 {
+                            "Template default".to_string()
+                        } else {
+                            format!("{} pt", d.font_size)
+                        })
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut d.font_size, 0, "Template default");
+                            for sz in [10u8, 11, 12] {
+                                ui.selectable_value(&mut d.font_size, sz, format!("{sz} pt"));
+                            }
+                        });
+                    egui::ComboBox::from_label("Section headings")
+                        .selected_text(latex::HEADINGS[d.heading.min(latex::HEADINGS.len() - 1)])
+                        .show_ui(ui, |ui| {
+                            for (i, f) in latex::HEADINGS.iter().enumerate() {
+                                ui.selectable_value(&mut d.heading, i, *f);
+                            }
+                        });
+                    ui.add(
+                        egui::Slider::new(&mut d.margin_pct, 50..=150)
+                            .suffix("%")
+                            .text("Margins"),
+                    );
+                    ui.add(
+                        egui::Slider::new(&mut d.spacing_pct, 80..=150)
+                            .suffix("%")
+                            .text("Line spacing"),
+                    );
+                    if ui.button("Reset design").clicked() {
+                        *d = Default::default();
+                    }
+                });
+                ui.collapsing("Photo", |ui| {
+                    let ph = &mut cv.photo;
+                    ui.horizontal(|ui| {
+                        if ui.button("Choose photo…").clicked() {
+                            if let Some(p) = rfd::FileDialog::new()
+                                .add_filter("Image", &["png", "jpg", "jpeg"])
+                                .pick_file()
+                            {
+                                ph.path = p.display().to_string();
+                            }
+                        }
+                        if !ph.path.is_empty() && ui.button("Remove").clicked() {
+                            ph.path.clear();
+                        }
+                    });
+                    if ph.path.is_empty() {
+                        ui.weak("No photo (PNG or JPEG)");
+                    } else {
+                        ui.weak(&ph.path);
+                        if !PathBuf::from(&ph.path).is_file() {
+                            ui.colored_label(
+                                egui::Color32::from_rgb(200, 40, 40),
+                                "File not found",
+                            );
+                        }
+                        egui::ComboBox::from_label("Shape")
+                            .selected_text(latex::SHAPES[ph.shape.min(latex::SHAPES.len() - 1)])
+                            .show_ui(ui, |ui| {
+                                for (i, f) in latex::SHAPES.iter().enumerate() {
+                                    ui.selectable_value(&mut ph.shape, i, *f);
+                                }
+                            });
+                        ui.add(
+                            egui::Slider::new(&mut ph.size_mm, 15..=60)
+                                .suffix(" mm")
+                                .text("Size"),
+                        );
+                        ui.add(
+                            egui::Slider::new(&mut ph.zoom_pct, 100..=300)
+                                .suffix("%")
+                                .text("Zoom"),
+                        );
+                        ui.add(egui::Slider::new(&mut ph.offset_x, -100..=100).text("Crop X"));
+                        ui.add(egui::Slider::new(&mut ph.offset_y, -100..=100).text("Crop Y"));
+                    }
                 });
                 ui.collapsing("Profile", |ui| {
                     ui.add(egui::TextEdit::multiline(&mut cv.profile).desired_width(f32::INFINITY));
@@ -614,6 +860,7 @@ impl eframe::App for App {
         });
         self.record_history();
         self.autosave();
+        self.live_update(ctx);
     }
 }
 

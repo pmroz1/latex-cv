@@ -58,6 +58,56 @@ pub struct Cv {
     pub projects: Vec<Entry>,
     pub additional: String,
     pub sections: Vec<Section>,
+    pub design: Design,
+    pub photo: Photo,
+}
+
+/// Overrides for the selected template; 0 / 100 mean "template default".
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[serde(default)]
+pub struct Design {
+    pub font: usize,
+    pub font_size: u8,
+    pub margin_pct: u32,
+    pub spacing_pct: u32,
+    pub heading: usize,
+}
+
+impl Default for Design {
+    fn default() -> Self {
+        Design {
+            font: 0,
+            font_size: 0,
+            margin_pct: 100,
+            spacing_pct: 100,
+            heading: 0,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[serde(default)]
+pub struct Photo {
+    pub path: String,
+    /// 0 = square, 1 = circle, 2 = rounded square
+    pub shape: usize,
+    pub size_mm: u32,
+    pub zoom_pct: u32,
+    pub offset_x: i32,
+    pub offset_y: i32,
+}
+
+impl Default for Photo {
+    fn default() -> Self {
+        Photo {
+            path: String::new(),
+            shape: 1,
+            size_mm: 30,
+            zoom_pct: 100,
+            offset_x: 0,
+            offset_y: 0,
+        }
+    }
 }
 
 impl Default for Cv {
@@ -124,6 +174,8 @@ impl Default for Cv {
             )],
             additional: String::new(),
             sections: vec![],
+            design: Design::default(),
+            photo: Photo::default(),
         }
     }
 }
@@ -213,6 +265,12 @@ mod tests {
         });
         let s = serde_json::to_string(&cv).unwrap();
         assert!(serde_json::from_str::<Cv>(&s).unwrap() == cv);
+    }
+    #[test]
+    fn old_projects_get_design_defaults() {
+        let cv: Cv = serde_json::from_str(r#"{"name":"A"}"#).unwrap();
+        assert_eq!(cv.design.margin_pct, 100);
+        assert!(cv.photo.path.is_empty());
     }
     #[test]
     fn validation() {
