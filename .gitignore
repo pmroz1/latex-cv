@@ -90,3 +90,4 @@ output/
 ## Exceptions - keep these PDF files if needed
 # !main.pdf
 # !figures/*.pdf
+/target
