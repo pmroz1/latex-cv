@@ -69,3 +69,21 @@ Simply replace `images/photo.jpg` with the path to your own photo. The photo sho
 This template is available under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 Photo source: https://www.pexels.com/pl-pl/zdjecie/mezczyzna-na-portret-szarej-koszuli-91227/
+---
+
+## Desktop App (Rust)
+
+A native CV builder lives in `src/`: edit your CV in a GUI, pick one of 5 templates
+(Classic, Modern Banner, Minimal, Executive, Compact), choose an accent colour, and
+save/open projects locally as `.cvproj` (JSON) files (Ctrl+S saves).
+
+```
+cargo run --release        # run
+cargo test                 # tests
+```
+
+- **Export .tex** writes standalone LaTeX (needs only standard packages).
+- **Export PDF** uses `tectonic` or `pdflatex` if installed.
+- GitHub Actions (`.github/workflows/build.yml`) builds `latex-cv.exe` (Windows), Linux and macOS binaries; tagging `v*` publishes a release.
+
+The original `cv.tex` template remains usable on its own.
