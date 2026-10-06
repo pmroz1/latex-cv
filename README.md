@@ -4,7 +4,11 @@ A desktop CV builder (Rust + egui) that edits your CV in a form and exports LaTe
 
 ## Features
 
-- Form editor with 5 templates and accent colour
+- Live PDF preview: debounced background builds with cancel/progress, cached by source, and readable errors that point at the offending line (needs `tectonic`, `pdflatex` or `xelatex`, plus `pdftoppm` from poppler for the image preview)
+- 7 templates (Classic, Modern Banner, Minimal, Executive, Compact, Academic, ATS-safe)
+- Design settings: accent presets/colour, font, font size, margins, line spacing, section heading style
+- Photo upload (PNG/JPEG) with shape (square, circle, rounded), size, zoom and crop offsets
+- Custom sections and JSON Resume import/export
 - Save/open `.cvproj` projects (versioned JSON schema)
 - Undo/redo (Ctrl+Z / Ctrl+Y), Ctrl+S save, Ctrl+O open, Ctrl+E export PDF
 - Unsaved-changes prompt, 30 s autosave with crash recovery
@@ -22,7 +26,7 @@ cargo test
 
 ## Roadmap
 
-Live PDF preview, custom sections, photo, JSON Resume import/export, bundled Tectonic, Polish UI/templates, installers.
+Bundled Tectonic, LinkedIn/Markdown import, Polish UI/templates, installers.
 
 ---
 
