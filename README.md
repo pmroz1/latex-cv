@@ -2,6 +2,10 @@
 
 A desktop CV builder (Rust + egui) that edits your CV in a form and exports LaTeX, PDF, Markdown, HTML or plain text. The original LaTeX template (`cv.tex`) is still included.
 
+![LaTeX CV Builder](https://github.com/user-attachments/assets/24eef2af-4a51-4176-a5c4-01314f05edb9)
+
+*Form editor on the left, live PDF preview on the right (Executive template shown).*
+
 ## Features
 
 - Live PDF preview: debounced background builds with cancel/progress, cached by source, and readable errors that point at the offending line (needs `tectonic`, `pdflatex` or `xelatex`, plus `pdftoppm` from poppler for the image preview)
@@ -34,9 +38,9 @@ Bundled Tectonic, LinkedIn/Markdown import, Polish UI/templates, installers.
 
 ---
 
-# LaTeX CV Template
+# Original LaTeX Template
 
-A clean, professional, and customizable CV/resume template created with LaTeX.
+The repository still includes the original standalone LaTeX template, usable without the app.
 
 ![CV Preview](images/cv-preview.jpg)
 
