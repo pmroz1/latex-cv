@@ -1,6 +1,12 @@
 use crate::model::{Cv, Entry};
 
-pub const TEMPLATES: [&str; 5] = ["Classic", "Modern Banner", "Minimal", "Executive", "Compact"];
+pub const TEMPLATES: [&str; 5] = [
+    "Classic",
+    "Modern Banner",
+    "Minimal",
+    "Executive",
+    "Compact",
+];
 
 /// Escape LaTeX special characters in user text.
 pub fn esc(s: &str) -> String {
@@ -21,15 +27,56 @@ pub fn esc(s: &str) -> String {
     o
 }
 
+/// Escape text with a small markdown subset: **bold**, *italic*, [text](url).
+pub fn rich(s: &str) -> String {
+    let mut out = String::new();
+    let mut rest = s;
+    while !rest.is_empty() {
+        if let Some(r) = rest.strip_prefix("**") {
+            if let Some(end) = r.find("**").filter(|&e| e > 0) {
+                out += &format!("\\textbf{{{}}}", rich(&r[..end]));
+                rest = &r[end + 2..];
+                continue;
+            }
+        } else if let Some(r) = rest.strip_prefix('*') {
+            if let Some(end) = r.find('*').filter(|&e| e > 0 && !r[..e].starts_with(' ')) {
+                out += &format!("\\textit{{{}}}", esc(&r[..end]));
+                rest = &r[end + 1..];
+                continue;
+            }
+        } else if rest.starts_with('[') {
+            if let Some(m) = rest.find("](") {
+                if let Some(e) = rest[m..].find(')') {
+                    let (text, link) = (&rest[1..m], &rest[m + 2..m + e]);
+                    out += &format!("\\href{{{}}}{{{}}}", url(link), esc(text));
+                    rest = &rest[m + e + 1..];
+                    continue;
+                }
+            }
+        }
+        let c = rest.chars().next().unwrap();
+        out += &esc(&c.to_string());
+        rest = &rest[c.len_utf8()..];
+    }
+    out
+}
+
 /// URLs inside \href need only a few characters escaped.
 fn url(s: &str) -> String {
-    s.replace('\\', "").replace('%', r"\%").replace('#', r"\#").replace('{', "").replace('}', "")
+    s.replace('\\', "")
+        .replace('%', r"\%")
+        .replace('#', r"\#")
+        .replace(['{', '}'], "")
 }
 
 fn contact(cv: &Cv, sep: &str) -> String {
     let mut parts = vec![];
     if !cv.email.is_empty() {
-        parts.push(format!(r"\href{{mailto:{}}}{{{}}}", url(&cv.email), esc(&cv.email)));
+        parts.push(format!(
+            r"\href{{mailto:{}}}{{{}}}",
+            url(&cv.email),
+            esc(&cv.email)
+        ));
     }
     if !cv.phone.is_empty() {
         parts.push(esc(&cv.phone));
@@ -48,15 +95,20 @@ fn bullets(e: &Entry) -> String {
     if items.is_empty() {
         return String::new();
     }
-    let mut s = String::from("\\begin{itemize}[leftmargin=1.2em,itemsep=1pt,parsep=0pt,topsep=2pt]\n");
+    let mut s =
+        String::from("\\begin{itemize}[leftmargin=1.2em,itemsep=1pt,parsep=0pt,topsep=2pt]\n");
     for b in items {
-        s += &format!("  \\item {}\n", esc(b));
+        s += &format!("  \\item {}\n", rich(b));
     }
     s + "\\end{itemize}\n"
 }
 
 fn entry(e: &Entry) -> String {
-    let loc = if e.location.is_empty() { String::new() } else { esc(&e.location) };
+    let loc = if e.location.is_empty() {
+        String::new()
+    } else {
+        esc(&e.location)
+    };
     format!(
         "\\noindent\\begin{{tabular*}}{{\\textwidth}}{{@{{}}l@{{\\extracolsep{{\\fill}}}}r@{{}}}}\n\\textbf{{{}}} & {} \\\\\n\\textit{{{}}} & \\textit{{{}}}\n\\end{{tabular*}}\\vspace{{-2pt}}\n{}\\vspace{{4pt}}\n",
         esc(&e.title), loc, esc(&e.subtitle), esc(&e.date), bullets(e)
@@ -75,13 +127,23 @@ fn section(title: &str, entries: &[Entry]) -> String {
 }
 
 fn skills(cv: &Cv) -> String {
-    let rows: Vec<_> = cv.skills.iter().filter(|s| !s.label.is_empty() || !s.value.is_empty()).collect();
+    let rows: Vec<_> = cv
+        .skills
+        .iter()
+        .filter(|s| !s.label.is_empty() || !s.value.is_empty())
+        .collect();
     if rows.is_empty() {
         return String::new();
     }
-    let mut s = String::from("\\section{Skills}\n\\begin{itemize}[leftmargin=1.2em,itemsep=1pt,parsep=0pt,topsep=2pt]\n");
+    let mut s = String::from(
+        "\\section{Skills}\n\\begin{itemize}[leftmargin=1.2em,itemsep=1pt,parsep=0pt,topsep=2pt]\n",
+    );
     for r in rows {
-        s += &format!("  \\item \\textbf{{{}}}: {}\n", esc(&r.label), esc(&r.value));
+        s += &format!(
+            "  \\item \\textbf{{{}}}: {}\n",
+            esc(&r.label),
+            esc(&r.value)
+        );
     }
     s + "\\end{itemize}\n"
 }
@@ -96,7 +158,10 @@ fn body(cv: &Cv) -> String {
     s += &skills(cv);
     s += &section("Projects", &cv.projects);
     if !cv.additional.trim().is_empty() {
-        s += &format!("\\section{{Additional Information}}\n{}\n", esc(&cv.additional));
+        s += &format!(
+            "\\section{{Additional Information}}\n{}\n",
+            esc(&cv.additional)
+        );
     }
     s
 }
@@ -170,9 +235,36 @@ mod tests {
         assert_eq!(esc("R&D 50% #1 a_b"), r"R\&D 50\% \#1 a\_b");
     }
     #[test]
+    fn escapes_all_specials() {
+        assert_eq!(
+            esc(r"\ & % $ # _ { } ~ ^"),
+            r"\textbackslash{} \& \% \$ \# \_ \{ \} \textasciitilde{} \textasciicircum{}"
+        );
+    }
+    #[test]
+    fn rich_text() {
+        assert_eq!(
+            rich("**a_b** and *c* [x](http://u.io/#a)"),
+            r"\textbf{a\_b} and \textit{c} \href{http://u.io/\#a}{x}"
+        );
+        assert_eq!(rich("2 * 3 * 4"), r"2 * 3 * 4");
+        assert_eq!(rich("**open"), r"**open");
+    }
+    #[test]
+    fn user_input_is_escaped_in_output() {
+        let cv = Cv {
+            name: "A & B".into(),
+            ..Cv::default()
+        };
+        assert!(generate(&cv).contains(r"A \& B"));
+    }
+    #[test]
     fn all_templates_generate() {
         for t in 0..TEMPLATES.len() {
-            let cv = Cv { template: t, ..Cv::default() };
+            let cv = Cv {
+                template: t,
+                ..Cv::default()
+            };
             let s = generate(&cv);
             assert!(s.contains("\\begin{document}") && s.contains("Your Name"));
         }

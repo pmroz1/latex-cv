@@ -1,3 +1,31 @@
+# LaTeX CV Builder
+
+A desktop CV builder (Rust + egui) that edits your CV in a form and exports LaTeX, PDF, Markdown, HTML or plain text. The original LaTeX template (`cv.tex`) is still included.
+
+## Features
+
+- Form editor with 5 templates and accent colour
+- Save/open `.cvproj` projects (versioned JSON schema)
+- Undo/redo (Ctrl+Z / Ctrl+Y), Ctrl+S save, Ctrl+O open, Ctrl+E export PDF
+- Unsaved-changes prompt, 30 s autosave with crash recovery
+- Reorder, duplicate and delete entries and bullets
+- Validation warnings (empty name, invalid email/link, CV too long)
+- Bullets support `**bold**`, `*italic*` and `[text](url)`; all LaTeX special characters are escaped
+- Export: `.tex`, PDF (needs `tectonic` or `pdflatex`), Markdown, HTML, ATS plain text
+
+## Build
+
+```sh
+cargo run --release
+cargo test
+```
+
+## Roadmap
+
+Live PDF preview, custom sections, photo, JSON Resume import/export, bundled Tectonic, Polish UI/templates, installers.
+
+---
+
 # LaTeX CV Template
 
 A clean, professional, and customizable CV/resume template created with LaTeX.
