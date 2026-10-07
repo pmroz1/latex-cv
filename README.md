@@ -28,10 +28,6 @@ cargo run --release
 cargo test
 ```
 
-## CI
-
-GitHub Actions (`.github/workflows/build.yml`) builds `latex-cv.exe` (Windows), Linux and macOS binaries; tagging `v*` publishes a release.
-
 ## Roadmap
 
 Bundled Tectonic, LinkedIn/Markdown import, Polish UI/templates, installers.
